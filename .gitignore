@@ -1,33 +1,52 @@
-HELP.md
+### Maven ###
 target/
-.mvn/wrapper/maven-wrapper.jar
+!.mvn/wrapper/maven-wrapper.jar
 !**/src/main/**/target/
 !**/src/test/**/target/
 
-### STS ###
-.apt_generated
-.classpath
-.factorypath
-.project
-.settings
-.springBeans
-.sts4-cache
+### Gradle (por si alguien lo usa en el futuro) ###
+.gradle
+build/
 
-### IntelliJ IDEA ###
-.idea
-*.iws
+### IDEs ###
+# IntelliJ IDEA
+.idea/
 *.iml
+*.iws
 *.ipr
 
-### NetBeans ###
+# Eclipse/STS
+.project
+.classpath
+.factorypath
+.settings/
+.springBeans
+.apt_generated
+.sts4-cache
+
+# NetBeans
 /nbproject/private/
 /nbbuild/
 /dist/
 /nbdist/
 /.nb-gradle/
-build/
-!**/src/main/**/build/
-!**/src/test/**/build/
 
-### VS Code ###
+# VS Code
 .vscode/
+
+### Logs ###
+*.log
+
+### Compiled files ###
+*.class
+*.jar
+*.war
+*.nar
+*.ear
+*.zip
+*.tar.gz
+*.rar
+
+### JVM crash logs ###
+hs_err_pid*
+replay_pid*

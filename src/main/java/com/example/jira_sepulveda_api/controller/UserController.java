@@ -9,32 +9,32 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.Map;
 
-@RestController // Indica que esta clase maneja peticiones REST
-@RequestMapping("/api/users") // URL base para todo lo relacionado con usuarios
+@RestController // Indicates this class handles REST requests
+@RequestMapping("/api/users") // Base URL for user-related endpoints
 public class UserController {
 
     private final UserService userService;
 
-    // Inyección de dependencias: Spring crea UserService y lo pasa aquí
+    // Dependency injection: Spring creates UserService and passes it here
     public UserController(UserService userService) {
         this.userService = userService;
     }
 
-    // Endpoint para crear usuario (POST)
+    // Endpoint to create a user (POST)
     @PostMapping
     public ResponseEntity<?> createUser(@RequestBody User user) {
         try {
-            // Validamos el usuario con el servicio
+            // Validate the user with the service (business rules)
             userService.validateUser(user);
 
-            // Si pasa las validaciones, devolvemos 200 OK con el usuario
+            // If validations pass, return 200 OK with the user
             return ResponseEntity.ok(user);
         } catch (InvalidUserException e) {
-            // Si hay error de validación, devolvemos 400 Bad Request
+            // Validation error -> return 400 Bad Request
             return ResponseEntity.status(HttpStatus.BAD_REQUEST)
                     .body(Map.of("error", e.getMessage()));
         } catch (Exception e) {
-            // Cualquier otro error inesperado → 500 Internal Server Error
+            // Any unexpected error -> 500 Internal Server Error
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                     .body(Map.of("error", "Internal server error"));
         }

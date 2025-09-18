@@ -3,40 +3,29 @@ package com.example.jira_sepulveda_api.service;
 import com.example.jira_sepulveda_api.exception.InvalidUserException;
 import com.example.jira_sepulveda_api.model.User;
 import org.springframework.stereotype.Service;
+import org.springframework.util.StringUtils;
 
-@Service // Esto le dice a Spring que esta clase es un servicio
+@Service
 public class UserService {
 
-    // Método principal: validar un usuario completo
     public void validateUser(User user) {
         if (user == null) {
-            throw new InvalidUserException("User cannot be null");
+            throw new InvalidUserException("El usuario no puede ser nulo");
         }
-
-        // Aquí aplicamos SRP: cada validación está en un método aparte
-        validateId(user.getId());
-        validateName(user.getName());
-        validateEmail(user.getEmail());
-    }
-
-    // Validación del ID
-    private void validateId(Integer id) {
-        if (id == null || id <= 0) {
-            throw new InvalidUserException("Invalid id: must be positive");
+        if (!StringUtils.hasText(user.getName())) {
+            throw new InvalidUserException("El nombre es obligatorio");
         }
-    }
-
-    // Validación del nombre
-    private void validateName(String name) {
-        if (name == null || name.trim().isEmpty()) {
-            throw new InvalidUserException("Name cannot be empty");
+        if (!StringUtils.hasText(user.getEmail())) {
+            throw new InvalidUserException("El correo es obligatorio");
         }
-    }
-
-    // Validación del correo
-    private void validateEmail(String email) {
-        if (email == null || !email.contains("@")) {
-            throw new InvalidUserException("Invalid email: must contain '@'");
+        if (!StringUtils.hasText(user.getDocumentType())) {
+            throw new InvalidUserException("El tipo de documento es obligatorio");
+        }
+        if (user.getDocumentNumber() == null || user.getDocumentNumber() <= 0) {
+            throw new InvalidUserException("El número de documento debe ser positivo");
+        }
+        if (!StringUtils.hasText(user.getRole())) {
+            throw new InvalidUserException("El rol es obligatorio");
         }
     }
 }

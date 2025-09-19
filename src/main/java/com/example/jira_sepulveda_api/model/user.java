@@ -13,18 +13,18 @@ public class User {
     @JsonProperty("id")
     private Integer id;
 
-    @JsonProperty("nombre")
+    @JsonProperty("name")
     private String name;
 
-    @JsonProperty("correo")
+    @JsonProperty("email")
     private String email;
 
-    @JsonProperty("tipo")
+    @JsonProperty("documentType")
     private String documentType;
 
-    @JsonProperty("numero")
+    @JsonProperty("documentNumber")
     private Integer documentNumber;
 
-    @JsonProperty("rol")
+    @JsonProperty("role")
     private String role;
 }

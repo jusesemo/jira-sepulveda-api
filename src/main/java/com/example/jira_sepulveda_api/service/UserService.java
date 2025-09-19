@@ -10,22 +10,25 @@ public class UserService {
 
     public void validateUser(User user) {
         if (user == null) {
-            throw new InvalidUserException("El usuario no puede ser nulo");
+            throw new InvalidUserException("User cannot be null");
         }
         if (!StringUtils.hasText(user.getName())) {
-            throw new InvalidUserException("El nombre es obligatorio");
+            throw new InvalidUserException("Name is required");
         }
         if (!StringUtils.hasText(user.getEmail())) {
-            throw new InvalidUserException("El correo es obligatorio");
+            throw new InvalidUserException("Email is required");
+        }
+        if (!user.getEmail().contains("@")) {
+            throw new InvalidUserException("Email must contain '@'");            
         }
         if (!StringUtils.hasText(user.getDocumentType())) {
-            throw new InvalidUserException("El tipo de documento es obligatorio");
+            throw new InvalidUserException("Document type is required");
         }
         if (user.getDocumentNumber() == null || user.getDocumentNumber() <= 0) {
-            throw new InvalidUserException("El número de documento debe ser positivo");
+            throw new InvalidUserException("Document number must be positive");
         }
         if (!StringUtils.hasText(user.getRole())) {
-            throw new InvalidUserException("El rol es obligatorio");
+            throw new InvalidUserException("Role is required");
         }
     }
 }

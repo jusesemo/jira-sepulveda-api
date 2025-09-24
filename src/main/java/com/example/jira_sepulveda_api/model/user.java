@@ -6,9 +6,10 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 @Data
-@NoArgsConstructor
+// utilizar solo 1, entre NoArgsConstructor y AllArgsConstructor, depende lo necesario
+@NoArgsConstructor 
 @AllArgsConstructor
-public class User {
+public class User { 
 
     @JsonProperty("id")
     private Integer id;
@@ -28,3 +29,4 @@ public class User {
     @JsonProperty("role")
     private String role;
 }
+

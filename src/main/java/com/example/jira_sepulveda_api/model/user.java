@@ -14,7 +14,7 @@ public class User {
     @JsonProperty("id")
     private Integer id;
 
-    @JsonProperty("name")
+    @JsonProperty("namo")
     private String name;
 
     @JsonProperty("email")
@@ -22,8 +22,8 @@ public class User {
 
     @JsonProperty("documentType")
     private String documentType;
-
-    @JsonProperty("documentNumber")
+    
+    @JsonProperty("document_Number")
     private Integer documentNumber;
 
     @JsonProperty("role")

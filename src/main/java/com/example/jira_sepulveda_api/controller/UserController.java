@@ -10,7 +10,7 @@ import org.springframework.web.bind.annotation.*;
 import java.util.Map;
 
 @RestController // Indicates this class handles REST requests
-@RequestMapping("/api/users") // Base URL for user-related endpoints
+@RequestMapping("/api/users") // Base URL for user-related endpoints - path o ruta 
 public class UserController {
 
     private final UserService userService;
@@ -26,6 +26,8 @@ public class UserController {
         try {
             // Validate the user with the service (business rules)
             userService.validateUser(user);
+
+            System.out.println("Objeto recibido: " + user);
 
             // If validations pass, return 200 OK with the user
             return ResponseEntity.ok(user);

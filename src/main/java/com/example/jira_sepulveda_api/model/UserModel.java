@@ -8,8 +8,6 @@ import lombok.NoArgsConstructor;
 @Data
 // utilizar solo 1, entre NoArgsConstructor y AllArgsConstructor, depende lo necesario
 @NoArgsConstructor 
-@AllArgsConstructor
-
 public class UserModel {
 
 

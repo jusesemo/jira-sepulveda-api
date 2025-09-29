@@ -6,14 +6,15 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 @Data
-@NoArgsConstructor
-@AllArgsConstructor
-public class User {
+// utilizar solo 1, entre NoArgsConstructor y AllArgsConstructor, depende lo necesario
+@NoArgsConstructor 
+public class UserModel {
+
 
     @JsonProperty("id")
     private Integer id;
 
-    @JsonProperty("name")
+    @JsonProperty("namo")
     private String name;
 
     @JsonProperty("email")
@@ -21,10 +22,11 @@ public class User {
 
     @JsonProperty("documentType")
     private String documentType;
-
-    @JsonProperty("documentNumber")
+    
+    @JsonProperty("document_Number")
     private Integer documentNumber;
 
     @JsonProperty("role")
     private String role;
 }
+

@@ -1,14 +1,14 @@
 package com.example.jira_sepulveda_api.service;
 
 import com.example.jira_sepulveda_api.exception.InvalidUserException;
-import com.example.jira_sepulveda_api.model.User;
+import com.example.jira_sepulveda_api.model.UserModel;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 
 @Service
 public class UserService {
 
-    public void validateUser(User user) {
+    public void validateUser(UserModel user) {
         if (user == null) {
             throw new InvalidUserException("User cannot be null");
         }

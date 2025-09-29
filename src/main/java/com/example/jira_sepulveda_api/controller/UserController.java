@@ -1,7 +1,7 @@
 package com.example.jira_sepulveda_api.controller;
 
 import com.example.jira_sepulveda_api.exception.InvalidUserException;
-import com.example.jira_sepulveda_api.model.User;
+import com.example.jira_sepulveda_api.model.UserModel;
 import com.example.jira_sepulveda_api.service.UserService;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -22,7 +22,7 @@ public class UserController {
 
     // Endpoint to create a user (POST)
     @PostMapping
-    public ResponseEntity<?> createUser(@RequestBody User user) {
+    public ResponseEntity<?> createUser(@RequestBody UserModel user) {
         try {
             // Validate the user with the service (business rules)
             userService.validateUser(user);

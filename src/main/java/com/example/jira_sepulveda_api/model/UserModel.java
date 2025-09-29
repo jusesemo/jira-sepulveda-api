@@ -9,7 +9,9 @@ import lombok.NoArgsConstructor;
 // utilizar solo 1, entre NoArgsConstructor y AllArgsConstructor, depende lo necesario
 @NoArgsConstructor 
 @AllArgsConstructor
-public class User { 
+
+public class UserModel {
+
 
     @JsonProperty("id")
     private Integer id;

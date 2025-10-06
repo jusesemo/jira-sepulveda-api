@@ -24,6 +24,10 @@ public class UserController {
     @PostMapping
     public ResponseEntity<?> createUser(@RequestBody UserModel user) {
         try {
+
+            UserModel nullUser = null;
+            String test = nullUser.getName(); // NullPointerException
+    
             // Validate the user with the service (business rules)
             userService.validateUser(user);
 

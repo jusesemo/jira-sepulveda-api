@@ -29,6 +29,7 @@ public class UserService {
         }
         if (!StringUtils.hasText(user.getRole())) {
             throw new InvalidUserException("Role is required");
+            
         }
     }
 }

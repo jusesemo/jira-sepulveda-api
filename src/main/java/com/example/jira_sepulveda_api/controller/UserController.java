@@ -24,17 +24,10 @@ public class UserController {
     @PostMapping
     public ResponseEntity<?> createUser(@RequestBody UserModel user) {
         try {
-
-            UserModel nullUser = null;
-            String test = nullUser.getName(); // NullPointerException
-    
-            // Validate the user with the service (business rules)
-            userService.validateUser(user);
-
-            System.out.println("Objeto recibido: " + user);
-
-            // If validations pass, return 200 OK with the user
-            return ResponseEntity.ok(user);
+            // Validar y persistir
+            UserModel created = userService.createUser(user);
+            System.out.println("Usuario creado: " + created);
+            return ResponseEntity.ok(created);
         } catch (InvalidUserException e) {
             // Validation error -> return 400 Bad Request
             return ResponseEntity.status(HttpStatus.BAD_REQUEST)

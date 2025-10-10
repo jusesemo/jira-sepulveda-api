@@ -13,7 +13,7 @@ public class UserModel {
     @JsonProperty("id")
     private Integer id;
 
-    @JsonProperty("namo")
+    @JsonProperty("name")
     private String name;
 
     @JsonProperty("email")
@@ -22,7 +22,7 @@ public class UserModel {
     @JsonProperty("documentType")
     private String documentType;
     
-    @JsonProperty("document_Number")
+    @JsonProperty("documentNumber")
     private Integer documentNumber;
 
     @JsonProperty("role")

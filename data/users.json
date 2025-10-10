@@ -1,0 +1,15 @@
+[ {
+  "id" : 1,
+  "name" : "Chuchin",
+  "email" : "chuchin@mail.com",
+  "documentType" : "CC",
+  "documentNumber" : 1234,
+  "role" : "Admin"
+}, {
+  "id" : 1,
+  "name" : "Alvaro",
+  "email" : "Jusesen@mail.co",
+  "documentType" : "CC",
+  "documentNumber" : 3456,
+  "role" : "Operador"
+} ]

@@ -1,6 +1,6 @@
 package com.example.jira_sepulveda_api.repository;
 
-import com.example.jira_sepulveda_api.model.User;
+import com.example.jira_sepulveda_api.model.UserModel;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.stereotype.Repository;
@@ -19,13 +19,13 @@ public class UserRepository {
     /**
      * Método que retorna todos los usuarios guardados en el archivo JSON.
      */
-    public List<User> findAll() {
+    public List<UserModel> findAll() {
         try {
             File file = new File(FILE_PATH);
             if (!file.exists()) {
                 return new ArrayList<>(); // si no existe, retorna lista vacía
             }
-            return objectMapper.readValue(file, new TypeReference<List<User>>() {});
+            return objectMapper.readValue(file, new TypeReference<List<UserModel>>() {});
         } catch (IOException e) {
             e.printStackTrace();
             return new ArrayList<>();
@@ -35,11 +35,16 @@ public class UserRepository {
     /**
      * Método que guarda un nuevo usuario en el archivo JSON.
      */
-    public synchronized void save(User user) {
+    public synchronized void save(UserModel user) {
         try {
-            List<User> users = findAll(); // leer los existentes
+            File file = new File(FILE_PATH);
+            File parent = file.getParentFile();
+            if (parent != null && !parent.exists()) {
+                parent.mkdirs();
+            }
+            List<UserModel> users = findAll(); // leer los existentes
             users.add(user); // agregar el nuevo
-            objectMapper.writerWithDefaultPrettyPrinter().writeValue(new File(FILE_PATH), users); // guardar
+            objectMapper.writerWithDefaultPrettyPrinter().writeValue(file, users); // guardar
         } catch (IOException e) {
             e.printStackTrace();
         }

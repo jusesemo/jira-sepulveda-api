@@ -2,11 +2,18 @@ package com.example.jira_sepulveda_api.service;
 
 import com.example.jira_sepulveda_api.exception.InvalidUserException;
 import com.example.jira_sepulveda_api.model.UserModel;
+import com.example.jira_sepulveda_api.repository.UserRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 
 @Service
 public class UserService {
+
+    private final UserRepository userRepository;
+
+    public UserService(UserRepository userRepository) {
+        this.userRepository = userRepository;
+    }
 
     public void validateUser(UserModel user) {
         if (user == null) {
@@ -31,5 +38,11 @@ public class UserService {
             throw new InvalidUserException("Role is required");
             
         }
+    }
+
+    public UserModel createUser(UserModel user) {
+        validateUser(user);
+        userRepository.save(user);
+        return user;
     }
 }

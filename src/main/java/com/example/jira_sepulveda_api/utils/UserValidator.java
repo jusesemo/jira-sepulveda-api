@@ -15,7 +15,7 @@ public class UserService {
     }
 
     public UserModel createUser(UserModel user) {
-        UserValidator.validate(user); 
+        UserValidator.validate(user); // 👉 ahora se usa la clase utilitaria
         userRepository.save(user);
         return user;
     }

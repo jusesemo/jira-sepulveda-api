@@ -10,14 +10,14 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
-@Repository // Indica a Spring que esta clase maneja la capa de datos
+@Repository // Indicates to Spring that this class handles the data layer
 public class UserRepository {
 
     private final ObjectMapper objectMapper = new ObjectMapper();
     private static final String FILE_PATH = "./data/users.json";
 
     /**
-     * Método que retorna todos los usuarios guardados en el archivo JSON.
+     * method findAll() Method that returns all users saved in the JSON file.
      */
     public List<UserModel> findAll() {
         try {
@@ -33,7 +33,7 @@ public class UserRepository {
     }
 
     /**
-     * Método que guarda un nuevo usuario en el archivo JSON.
+     * Method that saves a new user to the JSON file.
      */
     public synchronized void save(UserModel user) {
         try {
@@ -46,7 +46,7 @@ public class UserRepository {
             users.add(user); // agregar el nuevo
             objectMapper.writerWithDefaultPrettyPrinter().writeValue(file, users); // guardar
         } catch (IOException e) {
-            e.printStackTrace();
-        }
+        throw new RuntimeException("Error al guardar el usuario", e);
     }
+        }
 }

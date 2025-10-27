@@ -95,14 +95,6 @@
 					<include>**/*</include>
 				</includes>
 			</resource>
-			<resource>
-				<directory>data</directory>
-				<targetPath>${project.build.directory}/classes/data</targetPath>
-				<includes>
-					<include>**/*</include>
-				</includes>
-			</resource>
 		</resources>
 	</build>
-
 </project>

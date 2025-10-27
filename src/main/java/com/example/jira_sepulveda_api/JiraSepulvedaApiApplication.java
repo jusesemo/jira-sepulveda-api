@@ -10,6 +10,8 @@ public class JiraSepulvedaApiApplication {
 		// SpringApplication.run starts the embedded server (default port 8080)
 		SpringApplication.run(JiraSepulvedaApiApplication.class, args);
 		System.out.println("Spring Boot server is running");
-	}
 
+	}
 }
+
+

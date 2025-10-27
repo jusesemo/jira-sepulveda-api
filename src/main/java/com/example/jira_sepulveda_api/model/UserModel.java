@@ -5,7 +5,7 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 @Data
-// utilizar solo 1, entre NoArgsConstructor y AllArgsConstructor, depende lo necesario
+
 @NoArgsConstructor 
 public class UserModel {
 

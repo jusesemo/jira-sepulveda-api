@@ -49,4 +49,15 @@ public class UserRepository {
         throw new RuntimeException("Error al guardar el usuario", e);
     }
         }
+           // Read user by id
+           
+    public UserModel findById(Integer id) {
+        List<UserModel> users = findAll();
+        for (UserModel user : users) {
+            if (user.getId() != null && user.getId().equals(id)) {
+                return user;
+            }
+        }
+        return null;
+    }
 }

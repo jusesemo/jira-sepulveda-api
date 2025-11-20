@@ -16,10 +16,10 @@ public class OpenApiConfig {
                 .info(new Info()
                         .title("Jira Sepulveda API")
                         .version("1.0")
-                        .description("API para operaciones de ejemplo con Jira")
+                        .description("API for example operations")
                         .contact(new Contact()
-                                .name("Soporte")
-                                .email("soporte@ejemplo.com"))
+                                .name("Support")
+                                .email("support@example.com"))
                         .license(new License()
                                 .name("Apache 2.0")
                                 .url("https://www.apache.org/licenses/LICENSE-2.0.html")));

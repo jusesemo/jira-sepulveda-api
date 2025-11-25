@@ -1,0 +1,372 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <title>Recordatorio de Medicación (2 tomas)</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <style>
+    /* CSS minimalista, responsabilidad: solo estilos (SRP) */
+    :root { --bg:#f7f7f8; --fg:#222; --muted:#666; --primary:#2563eb; --ok:#16a34a; --warn:#ef4444; --card:#ffffff; --border:#e5e7eb; }
+    * { box-sizing: border-box; font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif; }
+    body { margin: 0; background: var(--bg); color: var(--fg); }
+    .container { max-width: 520px; margin: 32px auto; padding: 20px; background: var(--card); border: 1px solid var(--border); border-radius: 12px; }
+    h1 { font-size: 20px; margin: 0 0 12px; }
+    .now { font-size: 14px; color: var(--muted); margin-bottom: 16px; }
+    .group { display: flex; flex-direction: column; gap: 8px; margin-bottom: 16px; }
+    label { font-size: 14px; }
+    input[type="time"] { padding: 10px; border: 1px solid var(--border); border-radius: 8px; background: #fff; }
+    button { padding: 10px 12px; border: 1px solid var(--border); border-radius: 8px; background: #fff; cursor: pointer; }
+    button.primary { background: var(--primary); color: #fff; border-color: var(--primary); }
+    .row { display: flex; flex-direction: column; gap: 8px; }
+    .status { display: flex; flex-direction: column; gap: 12px; }
+    .badge { display: inline-block; padding: 4px 8px; border-radius: 999px; font-size: 12px; border: 1px solid var(--border); }
+    .badge.ok { background: #e8f7ee; color: var(--ok); border-color: #bbf7d0; }
+    .badge.pending { background: #fff3f3; color: var(--warn); border-color: #fecaca; }
+    .footer { margin-top: 12px; font-size: 12px; color: var(--muted); }
+    .overlay { position: fixed; inset: 0; display: none; align-items: center; justify-content: center; background: rgba(0,0,0,0.6); z-index: 50; }
+    .overlay .box { background: #fff; padding: 24px; border-radius: 12px; max-width: 420px; text-align: center; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Recordatorio de Medicación (2 tomas)</h1>
+    <div class="now">
+      Fecha y hora actual: <span id="nowText">--</span>
+    </div>
+
+    <div class="group">
+      <label for="time1">Hora de primera toma</label>
+      <input id="time1" type="time" />
+    </div>
+
+    <div class="group">
+      <label for="time2">Hora de segunda toma</label>
+      <input id="time2" type="time" />
+    </div>
+
+    <div class="group">
+      <button id="saveBtn" class="primary">Guardar</button>
+      <button id="enableSoundBtn" class="primary">Habilitar sonido</button>
+      <span id="soundStatus" class="now" aria-live="polite"></span>
+    </div>
+
+    <div class="status">
+      <div class="row">
+        <span class="badge" id="status1Badge">Primera toma: sin estado</span>
+        <button id="toggle1Btn">No se ha dado aún</button>
+      </div>
+      <div class="row">
+        <span class="badge" id="status2Badge">Segunda toma: sin estado</span>
+        <button id="toggle2Btn">No se ha dado aún</button>
+      </div>
+    </div>
+
+    <div class="footer">
+      Verificación de alarmas cada 30 segundos. Requiere habilitar sonido por políticas del navegador.
+    </div>
+  </div>
+
+  <!-- Overlay de alerta visual -->
+  <div id="alarmOverlay" class="overlay" role="dialog" aria-modal="true">
+    <div class="box">
+      <h2>¡Es hora del medicamento!</h2>
+      <p id="whichDoseText"></p>
+      <div style="display:flex; gap:8px; justify-content:center; margin-top:12px;">
+        <button id="ackBtn" class="primary">Entendido</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Audio de alarma -->
+  <audio id="alarmAudio" preload="auto" playsinline>
+    <source id="alarmSource" src="" type="audio/mpeg" />
+  </audio>
+
+  <script>
+    // ===== Claves de almacenamiento (SRP: configuración) =====
+    const LS_KEYS = {
+      time1: 'med_time_1',
+      time2: 'med_time_2',
+      dose1done: 'med_dose1_done',
+      dose2done: 'med_dose2_done',
+      lastAlarmFor: 'med_last_alarm_for' // '1@YYYY-MM-DD' o '2@YYYY-MM-DD'
+    };
+
+    // Nombre real del archivo de audio presente en /static (evita 404)
+    const AUDIO_FILE = 'Grupofirme.mp3';
+    const AUDIO_URL = encodeURI(AUDIO_FILE);
+
+    // ===== Utilidades de tiempo (SRP: solo manejo de fechas/horas) =====
+    const timeUtils = {
+      now() { return new Date(); },
+      pad(n) { return String(n).padStart(2, '0'); },
+      toHHMM(d) { return `${this.pad(d.getHours())}:${this.pad(d.getMinutes())}`; },
+      todayKey() {
+        const d = new Date();
+        return `${d.getFullYear()}-${this.pad(d.getMonth()+1)}-${this.pad(d.getDate())}`;
+      },
+      equalsHHMMNow(hhmm) {
+        if (!hhmm) return false;
+        const now = this.now();
+        const current = this.toHHMM(now);
+        return current === hhmm;
+      }
+    };
+
+    // ===== Servicio de almacenamiento (SRP: solo localStorage) =====
+    const storageService = {
+      get(key, def=null) { try { const v = localStorage.getItem(key); return v ?? def; } catch { return def; } },
+      set(key, val) { try { localStorage.setItem(key, val); } catch {} },
+      setBool(key, val) { this.set(key, val ? '1' : '0'); },
+      getBool(key, def=false) {
+        const v = this.get(key, null);
+        if (v === null) return def;
+        return v === '1';
+      }
+    };
+
+    // Servicio de recursos para verificar disponibilidad de alarm.mp3
+    const resourceService = {
+      async probeAlarm(soundStatusEl) {
+        try {
+          const res = await fetch(AUDIO_URL + '?probe=' + Date.now(), { cache: 'no-store' });
+          const ok = res.ok;
+          console.log('[alarm] probe alarm.mp3 status=', res.status);
+          if (soundStatusEl) soundStatusEl.textContent = ok ? 'Audio disponible (HTTP ' + res.status + ')' : 'Audio no disponible (HTTP ' + res.status + ')';
+          return ok;
+        } catch (e) {
+          console.warn('[alarm] error probe alarm.mp3', e);
+          if (soundStatusEl) soundStatusEl.textContent = 'Error verificando audio: ' + (e && e.message ? e.message : e);
+          return false;
+        }
+      }
+    };
+
+    // ===== Servicio de audio/alarma (SRP: solo reproducir y gestionar alarma) =====
+    const alarmService = (function(){
+      let audioEl, overlayEl, whichDoseTextEl, enabled = false;
+
+      function init() {
+        audioEl = document.getElementById('alarmAudio');
+        const srcTag = document.getElementById('alarmSource');
+        if (srcTag) { srcTag.src = AUDIO_URL; }
+        try { audioEl.load(); } catch {}
+        overlayEl = document.getElementById('alarmOverlay');
+        whichDoseTextEl = document.getElementById('whichDoseText');
+      }
+
+      async function enableAudioByUserGesture() {
+        // Debe llamarse en respuesta a un gesto del usuario para desbloquear autoplay
+        try {
+          console.log('[alarm] intentando habilitar audio');
+          audioEl.load();
+          audioEl.muted = true;
+          await audioEl.play();
+          audioEl.pause();
+          audioEl.currentTime = 0;
+          audioEl.muted = false;
+          enabled = true;
+          console.log('[alarm] audio habilitado');
+          document.dispatchEvent(new CustomEvent('alarm-enabled', { detail: { enabled: true } }));
+          alert('Sonido habilitado. La alarma podrá reproducirse automáticamente.');
+        } catch (e) {
+          enabled = false;
+          console.warn('[alarm] fallo habilitar audio', e);
+          document.dispatchEvent(new CustomEvent('alarm-enabled', { detail: { enabled: false } }));
+          alert('No se pudo habilitar el sonido. Intenta nuevamente haciendo clic en "Habilitar sonido".');
+        }
+      }
+
+      async function notifyAndPlay(doseLabel) {
+        whichDoseTextEl.textContent = doseLabel;
+        overlayEl.style.display = 'flex';
+        try {
+          console.log('[alarm] reproduciendo alarma');
+          await audioEl.play();
+        } catch (e) {
+          // Si falla el autoplay, al menos mostramos el overlay
+          console.warn('No se pudo reproducir el audio automáticamente:', e);
+        }
+      }
+
+      function stopAndHide() {
+        try { audioEl.pause(); audioEl.currentTime = 0; } catch {}
+        overlayEl.style.display = 'none';
+      }
+
+      function isEnabled() { return enabled; }
+
+      return { init, enableAudioByUserGesture, notifyAndPlay, stopAndHide, isEnabled };
+    })();
+
+    // ===== Estado de UI (SRP: solo mantener estado en memoria) =====
+    const uiState = {
+      time1: '',
+      time2: '',
+      dose1done: false,
+      dose2done: false
+    };
+
+    // ===== Controlador de UI (SRP: solo manipular DOM y eventos) =====
+    const uiController = (function(){
+      let nowText, time1El, time2El, saveBtn, enableSoundBtn, status1Badge, status2Badge, toggle1Btn, toggle2Btn, ackBtn;
+
+      function init() {
+        nowText = document.getElementById('nowText');
+        time1El = document.getElementById('time1');
+        time2El = document.getElementById('time2');
+        saveBtn = document.getElementById('saveBtn');
+        enableSoundBtn = document.getElementById('enableSoundBtn');
+        status1Badge = document.getElementById('status1Badge');
+        status2Badge = document.getElementById('status2Badge');
+        toggle1Btn = document.getElementById('toggle1Btn');
+        toggle2Btn = document.getElementById('toggle2Btn');
+        ackBtn = document.getElementById('ackBtn');
+        const soundStatus = document.getElementById('soundStatus');
+
+        saveBtn.addEventListener('click', onSave);
+        enableSoundBtn.addEventListener('click', async () => {
+          const prevText = enableSoundBtn.textContent;
+          enableSoundBtn.textContent = 'Habilitando…';
+          enableSoundBtn.disabled = true;
+          soundStatus.textContent = 'Intentando habilitar sonido…';
+          try {
+            const available = await resourceService.probeAlarm(soundStatus);
+            if (!available) {
+              throw new Error('alarm.mp3 no accesible');
+            }
+            const bust = AUDIO_URL + '?ts=' + Date.now();
+            const srcEl = document.querySelector('#alarmAudio source');
+            if (srcEl) srcEl.src = bust;
+            document.getElementById('alarmAudio').load();
+            await alarmService.enableAudioByUserGesture();
+          } finally {
+            if (!alarmService.isEnabled || !alarmService.isEnabled()) {
+              enableSoundBtn.textContent = prevText;
+              enableSoundBtn.disabled = false;
+              enableSoundBtn.classList.add('primary');
+              soundStatus.textContent = 'No se pudo habilitar el sonido. Intenta nuevamente.';
+            }
+          }
+        });
+        toggle1Btn.addEventListener('click', () => toggleDose(1));
+        toggle2Btn.addEventListener('click', () => toggleDose(2));
+        ackBtn.addEventListener('click', alarmService.stopAndHide);
+
+        document.addEventListener('alarm-enabled', (e) => {
+          const on = !!(e.detail && e.detail.enabled);
+          enableSoundBtn.textContent = on ? 'Sonido habilitado' : 'Habilitar sonido';
+          enableSoundBtn.disabled = on;
+          if (on) { enableSoundBtn.classList.remove('primary'); } else { enableSoundBtn.classList.add('primary'); }
+          const soundStatus = document.getElementById('soundStatus');
+          soundStatus.textContent = on ? 'Sonido habilitado correctamente.' : 'No se pudo habilitar el sonido.';
+        });
+
+        if (alarmService.isEnabled && alarmService.isEnabled()) {
+          enableSoundBtn.textContent = 'Sonido habilitado';
+          enableSoundBtn.disabled = true;
+          enableSoundBtn.classList.remove('primary');
+        }
+      }
+
+      function renderClock() {
+        const now = timeUtils.now();
+        nowText.textContent = now.toLocaleString();
+      }
+
+      function renderForm() {
+        time1El.value = uiState.time1 || '';
+        time2El.value = uiState.time2 || '';
+      }
+
+      function renderStatus() {
+        status1Badge.className = 'badge ' + (uiState.dose1done ? 'ok' : 'pending');
+        status1Badge.textContent = 'Primera toma: ' + (uiState.dose1done ? '¡Ya se dio!' : 'No se ha dado aún');
+        toggle1Btn.textContent = uiState.dose1done ? 'Sí, ya se dio' : 'No se ha dado aún';
+
+        status2Badge.className = 'badge ' + (uiState.dose2done ? 'ok' : 'pending');
+        status2Badge.textContent = 'Segunda toma: ' + (uiState.dose2done ? '¡Ya se dio!' : 'No se ha dado aún');
+        toggle2Btn.textContent = uiState.dose2done ? 'Sí, ya se dio' : 'No se ha dado aún';
+      }
+
+      function onSave() {
+        uiState.time1 = time1El.value || '';
+        uiState.time2 = time2El.value || '';
+        storageService.set(LS_KEYS.time1, uiState.time1);
+        storageService.set(LS_KEYS.time2, uiState.time2);
+        alert('Horarios guardados');
+      }
+
+      function toggleDose(n) {
+        if (n === 1) {
+          uiState.dose1done = !uiState.dose1done;
+          storageService.setBool(LS_KEYS.dose1done, uiState.dose1done);
+        } else {
+          uiState.dose2done = !uiState.dose2done;
+          storageService.setBool(LS_KEYS.dose2done, uiState.dose2done);
+        }
+        renderStatus();
+      }
+
+      return { init, renderClock, renderForm, renderStatus };
+    })();
+
+    // ===== Verificador de alarmas (SRP: solo lógica de verificación cada 30s) =====
+    const alarmChecker = (function(){
+      function alreadyRangFor(doseIndex) {
+        const last = storageService.get(LS_KEYS.lastAlarmFor, '');
+        return last === `${doseIndex}@${timeUtils.todayKey()}`;
+      }
+      function setRangFor(doseIndex) {
+        storageService.set(LS_KEYS.lastAlarmFor, `${doseIndex}@${timeUtils.todayKey()}`);
+      }
+
+      async function check() {
+        // Primera toma
+        if (timeUtils.equalsHHMMNow(uiState.time1) && !alreadyRangFor(1)) {
+          await alarmService.notifyAndPlay('Primera toma');
+          setRangFor(1);
+        }
+        // Segunda toma
+        if (timeUtils.equalsHHMMNow(uiState.time2) && !alreadyRangFor(2)) {
+          await alarmService.notifyAndPlay('Segunda toma');
+          setRangFor(2);
+        }
+      }
+
+      function start() {
+        // Ejecuta al inicio y luego cada 30s
+        check();
+        setInterval(check, 30 * 1000);
+      }
+
+      return { start };
+    })();
+
+    // ===== Orquestador de app (SRP: inicialización y coordinación) =====
+    (function app(){
+      // Inicializar servicios
+      alarmService.init();
+      uiController.init();
+
+      // Cargar estado desde localStorage
+      uiState.time1 = storageService.get(LS_KEYS.time1, '');
+      uiState.time2 = storageService.get(LS_KEYS.time2, '');
+      uiState.dose1done = storageService.getBool(LS_KEYS.dose1done, false);
+      uiState.dose2done = storageService.getBool(LS_KEYS.dose2done, false);
+
+      // Render inicial
+      uiController.renderForm();
+      uiController.renderStatus();
+      uiController.renderClock();
+      setInterval(uiController.renderClock, 1000);
+
+      // Iniciar verificador de alarmas
+      alarmChecker.start();
+
+      // Ejemplo de uso del backend (opcional)
+      // fetch('/api/time').then(r => r.json()).then(console.log).catch(console.warn);
+    })();
+  </script>
+</body>
+</html>

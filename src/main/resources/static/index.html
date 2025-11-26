@@ -77,6 +77,16 @@
     </div>
   </div>
 
+  <div id="modalOverlay" class="overlay" role="dialog" aria-modal="true">
+    <div class="box">
+      <h2 id="modalTitle"></h2>
+      <p id="modalText"></p>
+      <div style="display:flex; gap:8px; justify-content:center; margin-top:12px;">
+        <button id="modalOkBtn" class="primary">Aceptar</button>
+      </div>
+    </div>
+  </div>
+
   <!-- Audio de alarma -->
   <audio id="alarmAudio" preload="auto" playsinline>
     <source id="alarmSource" src="" type="audio/mpeg" />
@@ -142,15 +152,41 @@
       }
     };
 
+    // ===== Servicio de modal (SRP: solo mostrar/ocultar modal genérico) =====
+    const modalService = (function(){
+      let overlay, titleEl, textEl, okBtn;
+      function init(){
+        overlay = document.getElementById('modalOverlay');
+        titleEl = document.getElementById('modalTitle');
+        textEl = document.getElementById('modalText');
+        okBtn = document.getElementById('modalOkBtn');
+        if (okBtn) okBtn.addEventListener('click', hide);
+      }
+      function show(title, text){
+        if (!overlay) init();
+        titleEl.textContent = title;
+        textEl.textContent = text;
+        overlay.style.display = 'flex';
+      }
+      function hide(){
+        if (!overlay) return;
+        overlay.style.display = 'none';
+      }
+      return { init, show, hide };
+    })();
+    // Exponer en window para evitar ReferenceError en handlers
+    try { window.modalService = modalService; } catch(e) {}
+
     // ===== Servicio de audio/alarma (SRP: solo reproducir y gestionar alarma) =====
     const alarmService = (function(){
-      let audioEl, overlayEl, whichDoseTextEl, enabled = false;
+      let audioEl, overlayEl, whichDoseTextEl, enabled = false, currentDoseIndex = null;
 
       function init() {
         audioEl = document.getElementById('alarmAudio');
         const srcTag = document.getElementById('alarmSource');
         if (srcTag) { srcTag.src = AUDIO_URL; }
         try { audioEl.load(); } catch {}
+        try { audioEl.volume = 1.0; } catch {}
         overlayEl = document.getElementById('alarmOverlay');
         whichDoseTextEl = document.getElementById('whichDoseText');
       }
@@ -177,11 +213,16 @@
         }
       }
 
-      async function notifyAndPlay(doseLabel) {
+      async function notifyAndPlay(doseLabel, doseIndex) {
         whichDoseTextEl.textContent = doseLabel;
         overlayEl.style.display = 'flex';
+        currentDoseIndex = doseIndex;
         try {
           console.log('[alarm] reproduciendo alarma');
+          try { audioEl.muted = false; } catch {}
+          try { audioEl.volume = 1.0; } catch {}
+          try { audioEl.currentTime = 0; } catch {}
+          try { audioEl.load(); } catch {}
           await audioEl.play();
         } catch (e) {
           // Si falla el autoplay, al menos mostramos el overlay
@@ -195,8 +236,9 @@
       }
 
       function isEnabled() { return enabled; }
+      function getCurrentDoseIndex() { return currentDoseIndex; }
 
-      return { init, enableAudioByUserGesture, notifyAndPlay, stopAndHide, isEnabled };
+      return { init, enableAudioByUserGesture, notifyAndPlay, stopAndHide, isEnabled, getCurrentDoseIndex };
     })();
 
     // ===== Estado de UI (SRP: solo mantener estado en memoria) =====
@@ -223,6 +265,17 @@
         toggle2Btn = document.getElementById('toggle2Btn');
         ackBtn = document.getElementById('ackBtn');
         const soundStatus = document.getElementById('soundStatus');
+
+        time1El.addEventListener('change', () => {
+          uiState.time1 = time1El.value || '';
+          storageService.set(LS_KEYS.time1, uiState.time1);
+          console.log('[alarm] time1 actualizado a', uiState.time1);
+        });
+        time2El.addEventListener('change', () => {
+          uiState.time2 = time2El.value || '';
+          storageService.set(LS_KEYS.time2, uiState.time2);
+          console.log('[alarm] time2 actualizado a', uiState.time2);
+        });
 
         saveBtn.addEventListener('click', onSave);
         enableSoundBtn.addEventListener('click', async () => {
@@ -251,7 +304,7 @@
         });
         toggle1Btn.addEventListener('click', () => toggleDose(1));
         toggle2Btn.addEventListener('click', () => toggleDose(2));
-        ackBtn.addEventListener('click', alarmService.stopAndHide);
+        ackBtn.addEventListener('click', onAckAlarm);
 
         document.addEventListener('alarm-enabled', (e) => {
           const on = !!(e.detail && e.detail.enabled);
@@ -287,25 +340,65 @@
         status2Badge.className = 'badge ' + (uiState.dose2done ? 'ok' : 'pending');
         status2Badge.textContent = 'Segunda toma: ' + (uiState.dose2done ? '¡Ya se dio!' : 'No se ha dado aún');
         toggle2Btn.textContent = uiState.dose2done ? 'Sí, ya se dio' : 'No se ha dado aún';
+        toggle2Btn.disabled = !uiState.dose1done;
       }
 
       function onSave() {
         uiState.time1 = time1El.value || '';
         uiState.time2 = time2El.value || '';
+        const ms = (typeof modalService !== 'undefined' && modalService) || (typeof window !== 'undefined' && window.modalService) || null;
+        if (!uiState.time1 || !uiState.time2) {
+          const def1 = '08:00';
+          const def2 = '20:00';
+          uiState.time1 = uiState.time1 || def1;
+          uiState.time2 = uiState.time2 || def2;
+          if (uiState.time1 === uiState.time2) { uiState.time2 = def2; }
+          time1El.value = uiState.time1;
+          time2El.value = uiState.time2;
+        }
+        if (uiState.time1 === uiState.time2) {
+          if (ms && ms.show) { ms.show('Información', 'La hora inicial no puede ser igual a la hora final.'); }
+          else { alert('Información\nLa hora inicial no puede ser igual a la hora final.'); }
+          return;
+        }
         storageService.set(LS_KEYS.time1, uiState.time1);
         storageService.set(LS_KEYS.time2, uiState.time2);
-        alert('Horarios guardados');
+        if (ms && ms.show) { ms.show('Información', 'Su horario fue guardado con exito.'); }
+        else { alert('Información\nSu horario fue guardado con exito.'); }
       }
 
       function toggleDose(n) {
         if (n === 1) {
           uiState.dose1done = !uiState.dose1done;
           storageService.setBool(LS_KEYS.dose1done, uiState.dose1done);
+          if (!uiState.dose1done) {
+            uiState.dose2done = false;
+            storageService.setBool(LS_KEYS.dose2done, uiState.dose2done);
+          }
         } else {
+          if (!uiState.dose1done) { return; }
           uiState.dose2done = !uiState.dose2done;
           storageService.setBool(LS_KEYS.dose2done, uiState.dose2done);
+          if (uiState.dose2done) {
+            resetDailyState();
+          }
         }
         renderStatus();
+      }
+
+      function onAckAlarm() {
+        const idx = alarmService.getCurrentDoseIndex ? alarmService.getCurrentDoseIndex() : null;
+        alarmService.stopAndHide();
+        if (idx === 1) {
+          uiState.dose1done = true;
+          storageService.setBool(LS_KEYS.dose1done, true);
+          renderStatus();
+        } else if (idx === 2) {
+          uiState.dose2done = true;
+          storageService.setBool(LS_KEYS.dose2done, true);
+          renderStatus();
+          resetDailyState();
+        }
       }
 
       return { init, renderClock, renderForm, renderStatus };
@@ -322,20 +415,27 @@
       }
 
       async function check() {
+        if (!alarmService.isEnabled || !alarmService.isEnabled()) {
+          console.log('[alarm] audio no habilitado, omitiendo verificación');
+          return;
+        }
         // Primera toma
         if (timeUtils.equalsHHMMNow(uiState.time1) && !alreadyRangFor(1)) {
-          await alarmService.notifyAndPlay('Primera toma');
+          console.log('[alarm] coincidencia detectada: primera toma');
+          await alarmService.notifyAndPlay('Primera toma', 1);
           setRangFor(1);
         }
         // Segunda toma
         if (timeUtils.equalsHHMMNow(uiState.time2) && !alreadyRangFor(2)) {
-          await alarmService.notifyAndPlay('Segunda toma');
+          console.log('[alarm] coincidencia detectada: segunda toma');
+          await alarmService.notifyAndPlay('Segunda toma', 2);
           setRangFor(2);
         }
       }
 
       function start() {
         // Ejecuta al inicio y luego cada 30s
+        console.log('[alarm] iniciando verificador. t1=', uiState.time1, ' t2=', uiState.time2);
         check();
         setInterval(check, 30 * 1000);
       }
@@ -347,6 +447,7 @@
     (function app(){
       // Inicializar servicios
       alarmService.init();
+      if (typeof modalService !== 'undefined' && modalService && modalService.init) { modalService.init(); }
       uiController.init();
 
       // Cargar estado desde localStorage
@@ -354,6 +455,32 @@
       uiState.time2 = storageService.get(LS_KEYS.time2, '');
       uiState.dose1done = storageService.getBool(LS_KEYS.dose1done, false);
       uiState.dose2done = storageService.getBool(LS_KEYS.dose2done, false);
+
+      const today = timeUtils.todayKey();
+      const lastDate = storageService.get('med_state_date', '');
+      if (lastDate !== today) {
+        if (typeof resetDailyState === 'function') {
+          resetDailyState();
+        } else {
+          uiState.dose1done = false;
+          uiState.dose2done = false;
+          storageService.setBool(LS_KEYS.dose1done, false);
+          storageService.setBool(LS_KEYS.dose2done, false);
+          storageService.set(LS_KEYS.lastAlarmFor, '');
+          uiController.renderStatus();
+        }
+        storageService.set('med_state_date', today);
+      }
+
+      if (!uiState.time1 || !uiState.time2) {
+        const def1 = '08:00';
+        const def2 = '20:00';
+        uiState.time1 = uiState.time1 || def1;
+        uiState.time2 = uiState.time2 || def2;
+        if (uiState.time1 === uiState.time2) { uiState.time2 = def2; }
+        storageService.set(LS_KEYS.time1, uiState.time1);
+        storageService.set(LS_KEYS.time2, uiState.time2);
+      }
 
       // Render inicial
       uiController.renderForm();
